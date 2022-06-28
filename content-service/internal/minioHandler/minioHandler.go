@@ -87,6 +87,14 @@ func (mh *MinioHandler) InitGoroutines() {
 	}
 }
 
+func (mh *MinioHandler) MinioDeleteFile(key string) error {
+	err := mh.client.RemoveObject(context.Background(), mh.bucketName, key, minio.RemoveObjectOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio.Client {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretKeyID, ""),

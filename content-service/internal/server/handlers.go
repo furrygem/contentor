@@ -88,9 +88,16 @@ func (s *Server) downloadObjectHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, file)
 }
 
-// func (s *Server) deleteObjectHandler(w http.ResponseWriter, r *http.Request) {
-// 	Name := mux.Vars(r)
-// }
+func (s *Server) deleteObjectHandler(w http.ResponseWriter, r *http.Request) {
+	Name := mux.Vars(r)["id"]
+	err := s.minioHandler.MinioDeleteFile(Name)
+	if err != nil {
+		log.Printf("ERROR: %v", err)
+		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{"message": "Couldn't delete file"})
+		return
+	}
+	webutils.WriteHTTPCodeJSON(w, http.StatusNoContent, map[string]string{})
+}
 
 // func (s *Server) objectsHandler(w http.ResponseWriter, r *http.Request) {
 // 	if r.Method == http.MethodPost {

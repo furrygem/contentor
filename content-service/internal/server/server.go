@@ -27,7 +27,7 @@ func (s *Server) Start() {
 	s.router.HandleFunc("/api/objects", s.listObjectsHandler).Methods("GET")
 	s.router.HandleFunc("/api/objects", s.createObjectsHandler).Methods("POST")
 	s.router.HandleFunc("/api/objects/{id}", s.downloadObjectHandler).Methods("GET")
-	// s.router.HandleFunc("/api/objects/{id}", s.deleteObjectHandler).Methods("DELETE")
+	s.router.HandleFunc("/api/objects/{id}", s.deleteObjectHandler).Methods("DELETE")
 	server := http.Server{
 		Handler: handler,
 		Addr:    ":8000",
