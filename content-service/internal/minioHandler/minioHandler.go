@@ -75,7 +75,6 @@ func (mh *MinioHandler) MinioListFiles() []*Object {
 		object := &Object{
 			Key:  o.Key,
 			Size: o.Size,
-			Type: o.Metadata.Get("Content-Type"),
 		}
 		objectList = append(objectList, object)
 	}
@@ -102,5 +101,4 @@ func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio
 type Object struct {
 	Key  string `json:"key"`
 	Size int64  `json:"size"`
-	Type string `json:"type"`
 }
