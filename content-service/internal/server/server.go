@@ -24,8 +24,10 @@ func New(fileMessagesChan chan minioHandler.FileMessage, minioHandler *minioHand
 
 func (s *Server) Start() {
 	handler := AuthenticationMiddleware(s.router)
-	s.router.HandleFunc("/api/objects", s.objectsHandler)
-	s.router.HandleFunc("/api/objects/{id}", s.objectHandler)
+	s.router.HandleFunc("/api/objects", s.listObjectsHandler).Methods("GET")
+	s.router.HandleFunc("/api/objects", s.createObjectsHandler).Methods("POST")
+	s.router.HandleFunc("/api/objects/{id}", s.downloadObjectHandler).Methods("GET")
+	s.router.HandleFunc("/api/objects/{id}", s.deleteObjectHandler).Methods("DELETE")
 	server := http.Server{
 		Handler: handler,
 		Addr:    ":8000",
@@ -37,7 +39,3 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s: %s %s", r.RemoteAddr, r.Method, r.RequestURI)
 	s.router.ServeHTTP(w, r)
 }
-
-// func (s *Server) deleteObjectHandler(w http.ResponseWriter, r *http.Request) {
-// 	object Name := mux.Vars(r)
-// }

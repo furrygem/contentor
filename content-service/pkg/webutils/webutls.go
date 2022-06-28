@@ -16,7 +16,7 @@ func WriteHTTPCodeJSON(w http.ResponseWriter, err int, messages map[string]strin
 	if messages == nil {
 		messages = make(map[string]string)
 	}
-	messages["error"] = http.StatusText(err)
+	messages["status"] = http.StatusText(err)
 	result, _ := json.Marshal(messages)
 	w.Write(result)
 }

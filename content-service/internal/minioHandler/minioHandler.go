@@ -75,7 +75,6 @@ func (mh *MinioHandler) MinioListFiles() []*Object {
 		object := &Object{
 			Key:  o.Key,
 			Size: o.Size,
-			Type: o.Metadata.Get("Content-Type"),
 		}
 		objectList = append(objectList, object)
 	}
@@ -86,6 +85,14 @@ func (mh *MinioHandler) InitGoroutines() {
 	for i := 0; i < mh.workers; i++ {
 		go mh.MinioUploadObject(mh.fileMessagesChan)
 	}
+}
+
+func (mh *MinioHandler) MinioDeleteFile(key string) error {
+	err := mh.client.RemoveObject(context.Background(), mh.bucketName, key, minio.RemoveObjectOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio.Client {
@@ -102,5 +109,4 @@ func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio
 type Object struct {
 	Key  string `json:"key"`
 	Size int64  `json:"size"`
-	Type string `json:"type"`
 }
