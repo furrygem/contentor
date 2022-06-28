@@ -9,3 +9,4 @@ Serves content using MinIO
 | /api/objects      | GET    | Get a list of objects in the storage                |
 | /api/objects      | POST   | Upload an object to the storage via FormData `file` |
 | /api/objects/{id} | GET    | Download a file by its key                          |
+| /api/objects/{id} | DELETE | Delete a file by its key                            |
