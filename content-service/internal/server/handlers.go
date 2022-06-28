@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -58,7 +59,8 @@ func (s *Server) createObjectsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listObjectsHandler(w http.ResponseWriter, r *http.Request) {
-	objects := s.minioHandler.MinioListFiles()
+	ctx := context.Background()
+	objects := s.minioHandler.MinioListFiles(ctx)
 	response, err := json.Marshal(objects)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
@@ -70,12 +72,13 @@ func (s *Server) listObjectsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) downloadObjectHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	objectName := mux.Vars(r)["id"]
 	if objectName == "" {
 		webutils.WriteHTTPCode(w, http.StatusBadRequest)
 		return
 	}
-	file, _, err := s.minioHandler.MinioGetFile(objectName)
+	file, _, err := s.minioHandler.MinioGetFile(ctx, objectName)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 		webutils.WriteHTTPCode(w, http.StatusInternalServerError)
@@ -89,14 +92,16 @@ func (s *Server) downloadObjectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteObjectHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
 	Name := mux.Vars(r)["id"]
-	err := s.minioHandler.MinioDeleteFile(Name)
+	err := s.minioHandler.MinioDeleteFile(Name, ctx)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{"message": "Couldn't delete file"})
 		return
 	}
 	webutils.WriteHTTPCodeJSON(w, http.StatusNoContent, map[string]string{})
+	return
 }
 
 // func (s *Server) objectsHandler(w http.ResponseWriter, r *http.Request) {

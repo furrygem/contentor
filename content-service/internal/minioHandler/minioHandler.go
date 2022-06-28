@@ -24,6 +24,7 @@ type FileMessage struct {
 	Header *multipart.FileHeader
 	File   io.Reader
 	Owner  string
+	Ctx    context.Context
 }
 
 func New(fileMessagesChan chan FileMessage, config *Config) *MinioHandler {
@@ -46,7 +47,7 @@ func (mh *MinioHandler) MinioUploadObject(messages <-chan FileMessage) {
 		objectUUID, _ := uuid.NewRandom()
 		objectName := fmt.Sprintf("%s-%s", objectUUID.String(), msg.Header.Filename)
 		log.Printf("Uploading %s\n", objectName)
-		info, err := mh.client.PutObject(context.Background(), mh.bucketName, objectName, msg.File, msg.Header.Size, minio.PutObjectOptions{
+		info, err := mh.client.PutObject(msg.Ctx, mh.bucketName, objectName, msg.File, msg.Header.Size, minio.PutObjectOptions{
 			UserMetadata: map[string]string{"owner": msg.Owner},
 			ContentType:  msg.Header.Header.Get("content-type"),
 		})
@@ -57,8 +58,8 @@ func (mh *MinioHandler) MinioUploadObject(messages <-chan FileMessage) {
 	}
 }
 
-func (mh *MinioHandler) MinioGetFile(key string) (*minio.Object, minio.ObjectInfo, error) {
-	object, err := mh.client.GetObject(context.Background(), mh.bucketName, key, minio.GetObjectOptions{})
+func (mh *MinioHandler) MinioGetFile(ctx context.Context, key string) (*minio.Object, minio.ObjectInfo, error) {
+	object, err := mh.client.GetObject(ctx, mh.bucketName, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, minio.ObjectInfo{}, err
 	}
@@ -66,8 +67,8 @@ func (mh *MinioHandler) MinioGetFile(key string) (*minio.Object, minio.ObjectInf
 	return object, info, nil
 }
 
-func (mh *MinioHandler) MinioListFiles() []*Object {
-	objects := mh.client.ListObjects(context.Background(), mh.bucketName, minio.ListObjectsOptions{
+func (mh *MinioHandler) MinioListFiles(ctx context.Context) []*Object {
+	objects := mh.client.ListObjects(ctx, mh.bucketName, minio.ListObjectsOptions{
 		WithMetadata: true,
 	})
 	objectList := []*Object{}
@@ -81,18 +82,18 @@ func (mh *MinioHandler) MinioListFiles() []*Object {
 	return objectList
 }
 
-func (mh *MinioHandler) InitGoroutines() {
-	for i := 0; i < mh.workers; i++ {
-		go mh.MinioUploadObject(mh.fileMessagesChan)
-	}
-}
-
-func (mh *MinioHandler) MinioDeleteFile(key string) error {
-	err := mh.client.RemoveObject(context.Background(), mh.bucketName, key, minio.RemoveObjectOptions{})
+func (mh *MinioHandler) MinioDeleteFile(key string, ctx context.Context) error {
+	err := mh.client.RemoveObject(ctx, mh.bucketName, key, minio.RemoveObjectOptions{})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (mh *MinioHandler) InitGoroutines() {
+	for i := 0; i < mh.workers; i++ {
+		go mh.MinioUploadObject(mh.fileMessagesChan)
+	}
 }
 
 func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio.Client {
