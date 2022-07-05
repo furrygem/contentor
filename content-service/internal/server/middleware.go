@@ -16,7 +16,7 @@ func (s *Server) AuthenticationMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		authSplit := strings.Split(auth, " ")
-		if len(authSplit) != 2 || strings.ToLower(authSplit[0]) != "token" {
+		if len(authSplit) != 2 || strings.ToLower(authSplit[0]) != "bearer" {
 			webutils.WriteHTTPCode(w, http.StatusUnauthorized)
 			return
 		}

@@ -13,7 +13,7 @@ Serves content using MinIO
 
 ### Authorization
 
-#### Token
+#### Bearer
 
 JWT Token, signed with EdDSA algorithm, containing `sub` field containing the information about the resource owner
 
