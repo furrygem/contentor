@@ -1,4 +1,5 @@
 .env
 minio_root_password.txt
 minio_root_user.txt
-app
+*.pem
+*.key
