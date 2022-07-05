@@ -3,6 +3,8 @@ module github.com/furrygem/contentor/content-service
 go 1.18
 
 require (
+	github.com/caarlos0/env/v6 v6.9.3
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.4.0

@@ -21,7 +21,6 @@ func (s *Server) createObjectsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	file, header, err := r.FormFile("file")
-	owner := r.FormValue("owner")
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 		webutils.WriteHTTPCode(w, http.StatusBadRequest)
@@ -40,10 +39,17 @@ func (s *Server) createObjectsHandler(w http.ResponseWriter, r *http.Request) {
 		webutils.WriteHTTPCode(w, http.StatusInternalServerError)
 		return
 	}
+	user := r.Context().Value("token-subject").(string)
+	if user == "" {
+		log.Printf("Can't detect any user in request context. Is auth middleware working?")
+		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{})
+		return
+	}
 	msg := minioHandler.FileMessage{
 		Header: header,
 		File:   &buf,
-		Owner:  owner,
+		Owner:  user,
+		Ctx:    context.Background(),
 	}
 	file.Seek(0, 0)
 	probe := make([]byte, 5*1024)
@@ -60,7 +66,13 @@ func (s *Server) createObjectsHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	objects := s.minioHandler.MinioListFiles(ctx)
+	user := r.Context().Value("token-subject").(string)
+	if user == "" {
+		log.Printf("Can't detect any user in request context. Is auth middleware working?")
+		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{})
+		return
+	}
+	objects := s.minioHandler.MinioListFiles(ctx, user)
 	response, err := json.Marshal(objects)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
@@ -72,14 +84,28 @@ func (s *Server) listObjectsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) downloadObjectHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("token-subject").(string)
+	if user == "" {
+		log.Printf("Can't detect any user in request context. Is auth middleware working?")
+		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{})
+		return
+	}
 	ctx := context.Background()
 	objectName := mux.Vars(r)["id"]
 	if objectName == "" {
 		webutils.WriteHTTPCode(w, http.StatusBadRequest)
 		return
 	}
-	file, _, err := s.minioHandler.MinioGetFile(ctx, objectName)
+	file, _, err := s.minioHandler.MinioGetFile(ctx, objectName, user)
 	if err != nil {
+		if err.Error() == "Not authorized" {
+			webutils.WriteHTTPCode(w, http.StatusForbidden)
+			return
+		}
+		if err.Error() == "The specified key does not exist." {
+			webutils.WriteHTTPCode(w, http.StatusNotFound)
+			return
+		}
 		log.Printf("ERROR: %v", err)
 		webutils.WriteHTTPCode(w, http.StatusInternalServerError)
 		return
@@ -92,9 +118,15 @@ func (s *Server) downloadObjectHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteObjectHandler(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value("token-subject").(string)
+	if user == "" {
+		log.Printf("Can't detect any user in request context. Is auth middleware working?")
+		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{})
+		return
+	}
 	ctx := context.Background()
 	Name := mux.Vars(r)["id"]
-	err := s.minioHandler.MinioDeleteFile(Name, ctx)
+	err := s.minioHandler.MinioDeleteFile(Name, ctx, user)
 	if err != nil {
 		log.Printf("ERROR: %v", err)
 		webutils.WriteHTTPCodeJSON(w, http.StatusInternalServerError, map[string]string{"message": "Couldn't delete file"})

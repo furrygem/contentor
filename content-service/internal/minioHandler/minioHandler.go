@@ -6,11 +6,18 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+type Object struct {
+	Key   string `json:"key"`
+	Size  int64  `json:"size"`
+	Owner string `json:"owner"`
+}
 
 type MinioHandler struct {
 	client           *minio.Client
@@ -45,7 +52,7 @@ func New(fileMessagesChan chan FileMessage, config *Config) *MinioHandler {
 func (mh *MinioHandler) MinioUploadObject(messages <-chan FileMessage) {
 	for msg := range messages {
 		objectUUID, _ := uuid.NewRandom()
-		objectName := fmt.Sprintf("%s-%s", objectUUID.String(), msg.Header.Filename)
+		objectName := fmt.Sprintf("%s/%s-%s", msg.Owner, objectUUID.String(), msg.Header.Filename)
 		log.Printf("Uploading %s\n", objectName)
 		info, err := mh.client.PutObject(msg.Ctx, mh.bucketName, objectName, msg.File, msg.Header.Size, minio.PutObjectOptions{
 			UserMetadata: map[string]string{"owner": msg.Owner},
@@ -58,32 +65,55 @@ func (mh *MinioHandler) MinioUploadObject(messages <-chan FileMessage) {
 	}
 }
 
-func (mh *MinioHandler) MinioGetFile(ctx context.Context, key string) (*minio.Object, minio.ObjectInfo, error) {
+func (mh *MinioHandler) MinioGetFile(ctx context.Context, key string, owner string) (*minio.Object, *minio.ObjectInfo, error) {
+	fmt.Sprintf("%v, %v, %v", ctx, key, owner)
+	key = fmt.Sprintf("%s/%s", owner, key)
+	info, err := mh.client.GetObjectACL(ctx, mh.bucketName, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	if info.Metadata.Get("X-Amz-Meta-Owner") != owner || !strings.HasPrefix(key, fmt.Sprintf("%s/", owner)) {
+		return nil, nil, fmt.Errorf("Not authorized")
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
 	object, err := mh.client.GetObject(ctx, mh.bucketName, key, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, minio.ObjectInfo{}, err
+		return nil, nil, err
 	}
-	info, err := object.Stat()
 	return object, info, nil
 }
 
-func (mh *MinioHandler) MinioListFiles(ctx context.Context) []*Object {
+func (mh *MinioHandler) MinioListFiles(ctx context.Context, prefix string) []*Object {
 	objects := mh.client.ListObjects(ctx, mh.bucketName, minio.ListObjectsOptions{
 		WithMetadata: true,
+		Prefix:       prefix,
+		Recursive:    true,
 	})
 	objectList := []*Object{}
 	for o := range objects {
 		object := &Object{
-			Key:  o.Key,
-			Size: o.Size,
+			Key:   o.Key,
+			Size:  o.Size,
+			Owner: o.UserMetadata["X-Amz-Meta-Owner"],
 		}
 		objectList = append(objectList, object)
 	}
 	return objectList
 }
 
-func (mh *MinioHandler) MinioDeleteFile(key string, ctx context.Context) error {
-	err := mh.client.RemoveObject(ctx, mh.bucketName, key, minio.RemoveObjectOptions{})
+func (mh *MinioHandler) MinioDeleteFile(key string, ctx context.Context, owner string) error {
+	key = fmt.Sprintf("%s/%s", owner, key)
+	info, err := mh.client.GetObjectACL(ctx, mh.bucketName, key)
+	if err != nil {
+		return err
+	}
+	if info.Metadata.Get("X-Amz-Meta-Owner") != owner || !strings.HasPrefix(key, fmt.Sprintf("%s/", owner)) {
+		return fmt.Errorf("Not authorized")
+	}
+	err = mh.client.RemoveObject(ctx, mh.bucketName, key, minio.RemoveObjectOptions{})
 	if err != nil {
 		return err
 	}
@@ -105,9 +135,4 @@ func ConnectMinio(endpoint, accessKeyID, secretKeyID string, useSSL bool) *minio
 		log.Fatal(err)
 	}
 	return client
-}
-
-type Object struct {
-	Key  string `json:"key"`
-	Size int64  `json:"size"`
 }
