@@ -1,2 +1,2 @@
-python-etcd
+etcd3
 requests

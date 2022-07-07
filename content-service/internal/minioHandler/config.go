@@ -1,8 +1,6 @@
 package minioHandler
 
 import (
-	"fmt"
-
 	"github.com/caarlos0/env/v6"
 )
 
@@ -20,7 +18,6 @@ func (c *Config) FromENV() error {
 	if err := env.Parse(c); err != nil {
 		return err
 	}
-	fmt.Println(c)
 	return nil
 }
 
