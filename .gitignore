@@ -3,3 +3,13 @@ minio_root_password.txt
 minio_root_user.txt
 *.pem
 *.key
+
+__pycache__/
+*.pem
+*.pub
+mysql-root-password.txt
+
+*.pem
+*.pub
+build/
+minio.env

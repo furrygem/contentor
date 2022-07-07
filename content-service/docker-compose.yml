@@ -4,13 +4,15 @@ services:
   minio:
     image: quay.io/minio/minio
     env_file:
-      - minio.env
+      - ./minio.env
     ports:
       - 9000:9000
       - 9001:9001
     command: ["server", "--console-address", ":9001", ":9000"]
   content-service:
-    build: .
+    restart: always
+    build: content-service
     env_file: .env
     ports:
-      - 8000:8000
+      - 8001:8000
+    command: ["use-etcd", "-host", "etcd"]

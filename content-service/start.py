@@ -2,8 +2,9 @@
 
 import subprocess
 import argparse
+import sys
 import requests
-import etcd
+import etcd3
 
 
 def start():
@@ -34,9 +35,11 @@ def use_http(args):
 
 def use_etcd(args):
     print("use etcd")
-    c = etcd.Client(args.host, args.port)
-    val = c.read(args.k)
-    open("key.pub", "wb").write(val)
+    c = etcd3.client(args.host, args.port)
+    val = c.get(args.k)
+    if not val:
+        sys.exit(255)
+    open("key.pub", "wb").write(val[0])
 
 
 if __name__ == "__main__":
@@ -63,7 +66,7 @@ if __name__ == "__main__":
                                     default="localhost")
     use_etcd_subparser.add_argument("-port",
                                     help="etcd port",
-                                    default=4001,
+                                    default=2379,
                                     type=int)
 
     use_etcd_subparser.add_argument("-k",

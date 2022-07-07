@@ -1,4 +1,0 @@
-*.pem
-*.pub
-build/
-minio.env

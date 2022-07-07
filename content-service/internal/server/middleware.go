@@ -22,11 +22,11 @@ func (s *Server) AuthenticationMiddleware(next http.Handler) http.Handler {
 		}
 		rawToken := authSplit[1]
 		_, claims, err := s.authHandler.ParseJWT(rawToken)
-		user := claims["sub"].(string)
 		if err != nil {
 			webutils.WriteHTTPCodeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
 			return
 		}
+		user := claims["sub"].(string)
 		if claims.Valid() == nil {
 			// r.Header.Set("X-Auth-Token-Subject", user)
 			ctx := context.WithValue(r.Context(), "token-subject", user)

@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  etcd:
+    image: docker.io/bitnami/etcd:3
+    restart: always
+    ports:
+     - 2379:2379
+    environment:
+      # - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_LISTEN_CLIENTS_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ALLOW_NONE_AUTHENTICATION=yes
+  auth-service-db:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql-root-password
+      MYSQL_DATABASE: auth-service
+    ports:
+      - 3306:3306
+    secrets:
+      - mysql-root-password
+    
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+     - 8090:8080
+  
+  auth-service:
+    restart: always
+    build: auth-service
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    command: ["-m", "-u=--host=0.0.0.0", "--use-etcd", "--etcd-host", "etcd"]
+    depends_on:
+      - etcd
+      - auth-service-db
+
+  content-service-minio:
+    image: quay.io/minio/minio
+    env_file:
+      - ./minio.env
+    ports:
+      - 9000:9000
+      - 9001:9001
+    command: ["server", "--console-address", ":9001", ":9000"]
+
+  content-service:
+    restart: always
+    build: content-service
+    env_file: .env
+    ports:
+      - 8001:8000
+    command: ["use-etcd", "-host", "etcd"]
+    depends_on:
+      - etcd
+      - content-service-minio
+    
+secrets:
+  mysql-root-password:
+    file: mysql-root-password.txt

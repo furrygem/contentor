@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: "/run/secrets/mysql-root-password"
+      MYSQL_DATABASE: "auth-service"
+    ports:
+      - 3306:3306
+    secrets:
+      - mysql-root-password
+    
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+     - 8090:8080
+  
+  auth-service:
+    restart: always
+    build: .
+    ports:
+      - 8000:8000
+    env_file:
+      - .env
+    command: ["-m", "-u=--host=0.0.0.0", "--generate"]
+    depends_on:
+      - db
+    
+secrets:
+  mysql-root-password:
+    file: mysql-root-password.txt
