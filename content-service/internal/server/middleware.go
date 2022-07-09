@@ -2,11 +2,20 @@ package server
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/furrygem/contentor/content-service/pkg/webutils"
 )
+
+func (s *Server) LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.RequestURI)
+		next.ServeHTTP(w, r)
+	})
+
+}
 
 func (s *Server) AuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

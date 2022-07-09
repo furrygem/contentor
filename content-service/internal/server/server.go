@@ -16,6 +16,16 @@ type Server struct {
 	authHandler      *authHandler.AuthHandler
 }
 
+type StatusRecorder struct {
+	http.ResponseWriter
+	Status int
+}
+
+func (sr *StatusRecorder) WriteHeader(status int) {
+	sr.Status = status
+	sr.ResponseWriter.WriteHeader(status)
+}
+
 func New(fileMessagesChan chan minioHandler.FileMessage,
 	minioHandler *minioHandler.MinioHandler,
 	authHandler *authHandler.AuthHandler) *Server {
@@ -30,6 +40,7 @@ func New(fileMessagesChan chan minioHandler.FileMessage,
 
 func (s *Server) Start(c *Config) {
 	handler := s.AuthenticationMiddleware(s.router)
+	handler = s.LoggingMiddleware(handler)
 	s.router.HandleFunc("/api/objects", s.listObjectsHandler).Methods("GET")
 	s.router.HandleFunc("/api/objects", s.createObjectsHandler).Methods("POST")
 	s.router.HandleFunc("/api/objects/{id}", s.downloadObjectHandler).Methods("GET")
