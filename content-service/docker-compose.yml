@@ -11,7 +11,7 @@ services:
     command: ["server", "--console-address", ":9001", ":9000"]
   content-service:
     restart: always
-    build: content-service
+    build: .
     env_file: .env
     ports:
       - 8001:8000

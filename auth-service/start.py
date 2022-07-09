@@ -2,6 +2,7 @@
 
 import argparse
 import subprocess
+import sys
 import etcd3
 
 
@@ -40,5 +41,6 @@ if __name__ == "__main__":
         etcd_client.close()
 
     if args.m:
-        subprocess.call(["alembic", "upgrade", "head"])
+        if status := subprocess.call(["alembic", "upgrade", "head"]) != 0:
+            sys.exit(status)
     subprocess.call(["uvicorn", "main:app", *args.u])

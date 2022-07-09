@@ -58,7 +58,16 @@ services:
     depends_on:
       - etcd
       - content-service-minio
-    
+  nginx:
+    restart: always
+    image: nginx
+    ports:
+      - 8088:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-available/contentor.conf:/etc/nginx/sites-enabled/contentor.conf
+      - ./nginx/configs:/etc/nginx/configs/
+
 secrets:
   mysql-root-password:
     file: mysql-root-password.txt
