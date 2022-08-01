@@ -41,6 +41,7 @@ func New(fileMessagesChan chan minioHandler.FileMessage,
 func (s *Server) Start(c *Config) {
 	handler := s.AuthenticationMiddleware(s.router)
 	handler = s.LoggingMiddleware(handler)
+	log.Printf("Registering routes...")
 	s.router.HandleFunc("/api/objects", s.listObjectsHandler).Methods("GET")
 	s.router.HandleFunc("/api/objects", s.createObjectsHandler).Methods("POST")
 	s.router.HandleFunc("/api/objects/{id}", s.downloadObjectHandler).Methods("GET")
@@ -49,6 +50,7 @@ func (s *Server) Start(c *Config) {
 		Handler: handler,
 		Addr:    c.ListenAddr,
 	}
+	log.Printf("Starting listener at %s", c.ListenAddr)
 	log.Fatal(server.ListenAndServe())
 }
 

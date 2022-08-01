@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	log.SetPrefix("[content-service]")
+	log.Printf("Starting content service")
 	fileMessagesChan := make(chan minioHandler.FileMessage, 1)
 
 	minioHandlerConfig := minioHandler.NewConfig()
