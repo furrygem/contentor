@@ -1,0 +1,32 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    ports:
+      - 3000:3000
+    volumes:
+      - ./src/:/app/src
+  
+  redis:
+    image: redis
+    command: ["redis-server", "--save", "60", "1"]
+    ports:
+      - 16379:6379
+  
+  redis-commander:
+    image: rediscommander/redis-commander
+    environment:
+      - HTTP_USER=dev
+      - HTTP_PASSWORD_FILE=/run/secrets/redis-commander-http-password
+      - PORT=8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - 18000:8000
+    secrets:
+      - redis-commander-http-password
+
+secrets:
+  redis-commander-http-password:
+    file: redis-commander-http-password.txt
