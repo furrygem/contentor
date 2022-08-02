@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     authjwt_private_key_file: str = "key.pem"
     authjwt_public_key_file: str = "key.pub"
 
+    authjwt_denylist_enabled: bool = True
+    authjwt_denylist_token_checks: set = {"refresh", }
+
     def from_files(self):
         self.authjwt_private_key = open(self.authjwt_private_key_file, 'r')\
             .read()
@@ -59,18 +62,27 @@ class Settings(BaseSettings):
         }
 
 
-@AuthJWT.load_config
+denylist = set()
+
+
+@AuthJWT.load_config  # type: ignore
 def get_config():
     s = Settings()
     s.from_files()
     return s
 
 
+@AuthJWT.token_in_denylist_loader
+def check_if_token_in_denylist(token: dict[str, any]):  # type: ignore
+    jti = token['jti']
+    return jti in denylist
+
+
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):
     return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.message}
+        status_code=exc.status_code,  # type: ignore
+        content={"detail": exc.message}  # type: ignore
     )
 
 
@@ -83,7 +95,8 @@ def get_db():
 
 
 @app.post('/login')
-def login(user: UserCreateDTO, Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+def login(user: UserCreateDTO, Authorize: AuthJWT = Depends(),
+          db: Session = Depends(get_db)):
     u = get_user_by_username(user.username, db)
     if u is None:
         raise HTTPException(status_code=401, detail="Bad username or password")
@@ -93,7 +106,9 @@ def login(user: UserCreateDTO, Authorize: AuthJWT = Depends(), db: Session = Dep
 
     access_code = Authorize.create_access_token(subject=user.username,
                                                 algorithm="EdDSA")
-    return {"access_code": access_code}
+    refresh_token = Authorize.create_refresh_token(subject=user.username,
+                                                   algorithm="EdDSA")
+    return {"access_code": access_code, "refresh_token": refresh_token}
 
 
 @app.get('/user')
@@ -110,3 +125,24 @@ def register(user: UserCreateDTO, db: Session = Depends(get_db)):
     u = create_user(u, db)
     user_response = User.from_orm(u)
     return user_response
+
+
+@app.post('/refresh')
+def refresh(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_refresh_token_required()
+    current_user = Authorize.get_jwt_subject()
+
+    if not current_user:
+        raise HTTPException(400, "Bad access token, no subject provided")
+
+    raw_refresh = Authorize.get_raw_jwt()
+
+    if not raw_refresh:
+        raise HTTPException(400, "Bad access token, no raw refresh token")
+
+    jti = raw_refresh['jti']
+    denylist.add(jti)
+
+    new_refresh = Authorize.create_refresh_token(subject=current_user)
+    new_access = Authorize.create_access_token(subject=current_user)
+    return {'access_token': new_access, 'refresh_token': new_refresh}
