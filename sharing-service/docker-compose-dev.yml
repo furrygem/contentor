@@ -26,7 +26,15 @@ services:
       - 18000:8000
     secrets:
       - redis-commander-http-password
+  
+  nginx:
+    image: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/files/:/var/www/files/
+    ports:
+      - 8080:80
 
 secrets:
   redis-commander-http-password:
-    file: redis-commander-http-password.txt
+    file: secrets/redis-commander-http-password.txt
