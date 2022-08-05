@@ -27,6 +27,22 @@ JWT Token, signed with EdDSA algorithm, containing `sub` field containing the in
 }
 ```
 
+or 
+
+```json
+{
+    "typ": "jwt",
+    "alg": "EdDSA"
+}
+{
+    "sub": "guest",
+    "guest": true,
+    "shared": true,
+    "allowedKeys": ["uuid-filename.ext"],
+    "owner": "username"
+}
+```
+
 ## Startup script
 
 **generate** - fully generates private and public keys on startup
