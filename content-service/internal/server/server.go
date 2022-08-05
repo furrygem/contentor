@@ -39,8 +39,8 @@ func New(fileMessagesChan chan minioHandler.FileMessage,
 }
 
 func (s *Server) Start(c *Config) {
-	handler := s.AuthenticationMiddleware(s.router)
-	handler = s.LoggingMiddleware(handler)
+	handler := s.authenticationMiddleware(s.router)
+	handler = s.loggingMiddleware(handler)
 	log.Printf("Registering routes...")
 	s.router.HandleFunc("/api/objects", s.listObjectsHandler).Methods("GET")
 	s.router.HandleFunc("/api/objects", s.createObjectsHandler).Methods("POST")

@@ -1,0 +1,4 @@
+tmp/
+*.pem
+*.pub
+*.env

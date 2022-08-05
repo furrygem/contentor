@@ -34,6 +34,23 @@ type FileMessage struct {
 	Ctx    context.Context
 }
 
+func isAuthorizedOwner(ctx context.Context, objectInfo *minio.ObjectInfo, key string, subject string) (bool, string) {
+	if objectInfo.Metadata.Get("X-Amz-Meta-Owner") == subject || strings.HasPrefix(key, fmt.Sprintf("%s/", subject)) {
+		return true, ""
+	}
+
+	return false, "Not authorized"
+}
+
+func isAuthorizedGuest(ctx context.Context, key string, allowedKeys []interface{}) (bool, string) {
+	for _, k := range allowedKeys {
+		if key == k {
+			return true, ""
+		}
+	}
+	return false, "Not authorized"
+}
+
 func New(fileMessagesChan chan FileMessage, config *Config) *MinioHandler {
 	minioClient := ConnectMinio(config.Endpoint,
 		config.AccessKeyID,
@@ -65,6 +82,23 @@ func (mh *MinioHandler) MinioUploadObject(messages <-chan FileMessage) {
 	}
 }
 
+func (mh *MinioHandler) MinioGetSharedFile(ctx context.Context, key string, allowedKeys []interface{}, owner string) (*minio.Object, *minio.ObjectInfo, error) {
+	fmt.Sprintf("%v, %v, %v", ctx, key, allowedKeys)
+	key = fmt.Sprintf("%s/%s", owner, key)
+	if authorized, msg := isAuthorizedGuest(ctx, key, allowedKeys); !authorized {
+		return nil, nil, fmt.Errorf("%s", msg)
+	}
+	object, err := mh.client.GetObject(ctx, mh.bucketName, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := mh.client.GetObjectACL(ctx, mh.bucketName, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	return object, info, nil
+}
+
 func (mh *MinioHandler) MinioGetFile(ctx context.Context, key string, owner string) (*minio.Object, *minio.ObjectInfo, error) {
 	fmt.Sprintf("%v, %v, %v", ctx, key, owner)
 	key = fmt.Sprintf("%s/%s", owner, key)
@@ -72,11 +106,8 @@ func (mh *MinioHandler) MinioGetFile(ctx context.Context, key string, owner stri
 	if err != nil {
 		return nil, nil, err
 	}
-	if info.Metadata.Get("X-Amz-Meta-Owner") != owner || !strings.HasPrefix(key, fmt.Sprintf("%s/", owner)) {
-		return nil, nil, fmt.Errorf("Not authorized")
-	}
-	if err != nil {
-		return nil, nil, err
+	if authorized, msg := isAuthorizedOwner(ctx, info, key, owner); !authorized {
+		return nil, nil, fmt.Errorf("%s", msg)
 	}
 
 	object, err := mh.client.GetObject(ctx, mh.bucketName, key, minio.GetObjectOptions{})
