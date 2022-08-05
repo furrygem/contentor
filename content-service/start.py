@@ -7,8 +7,14 @@ import requests
 import etcd3
 
 
-def start():
-    subprocess.call(["./build/app"], shell=True)
+def start(debug: bool = False):
+    if debug:
+        print("using air")
+        subprocess.call(["air", "--build.bin", "'./build/app'",
+                         "--build.cmd",
+                         "go build -o build/app cmd/app/main.go"])
+    else:
+        subprocess.call(["./build/app"], shell=True)
 
 
 def generate(_):
@@ -72,7 +78,8 @@ if __name__ == "__main__":
     use_etcd_subparser.add_argument("-k",
                                     help="etcd key",
                                     default="contentor/public-key.pem")
+    parser.add_argument("--debug", action="store_true", required=False)
 
     n = parser.parse_args()
     n.func(n)
-    start()
+    start(n.debug)

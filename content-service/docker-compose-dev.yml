@@ -11,8 +11,12 @@ services:
     command: ["server", "--console-address", ":9001", ":9000"]
   content-service:
     restart: always
-    build: .
+    build:
+      context: .
+      dockerfile: dev.dockerfile
     env_file: .env
     ports:
       - 8001:8000
-    command: ["generate"]
+    command: ["--debug", "generate"]
+    volumes:
+      - ./:/app/
